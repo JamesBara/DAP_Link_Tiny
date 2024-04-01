@@ -215,60 +215,8 @@ const prvt_vector_handler prvt_vector_table[] __attribute__((section(".isr_vecto
     CRS_IRQHandler
 };
 
-
-
-
-
-
-
-
-
-
-volatile uint32_t _CFSR;
-volatile uint16_t _UFSR;
-volatile uint8_t _BFSR;
-volatile uint8_t _MMFSR;
-
-// Hard Fault Status Register
-volatile unsigned long _HFSR;
-
-// Debug Fault Status Register
-volatile unsigned long _DFSR;
-
-// Auxiliary Fault Status Register
-volatile unsigned long _AFSR;
-
-// Read the Fault Address Registers. These may not contain valid values.
-// Check BFARVALID/MMARVALID to see if they are valid values
-// MemManage Fault Address Register
-volatile unsigned long _MMAR;
-// Bus Fault Address Register
-volatile unsigned long _BFAR;
-
-
 void HardFault_Handler()
 {
-    _CFSR = (*((volatile uint32_t *)(0xE000ED28)));
-    _UFSR = (*((volatile uint16_t *)(0xE000ED2A)));
-    _BFSR = (*((volatile uint8_t *)(0xE000ED29)));
-    _MMFSR = (*((volatile uint8_t *)(0xE000ED28)));
-
-    // Hard Fault Status Register
-     _HFSR = (*((volatile unsigned long *)(0xE000ED2C)));
-
-    // Debug Fault Status Register
-    _DFSR = (*((volatile unsigned long *)(0xE000ED30)));
-
-    // Auxiliary Fault Status Register
-    _AFSR = (*((volatile unsigned long *)(0xE000ED3C)));
-
-    // Read the Fault Address Registers. These may not contain valid values.
-    // Check BFARVALID/MMARVALID to see if they are valid values
-    // MemManage Fault Address Register
-    _MMAR = (*((volatile unsigned long *)(0xE000ED34)));
-    // Bus Fault Address Register
-    _BFAR = (*((volatile unsigned long *)(0xE000ED38)));
-
 
 #if (!NDEBUG)
     __asm__("BKPT");
