@@ -1,0 +1,64 @@
+﻿{
+  "environments": [
+    { "PATH": "C:\\Windows\\system32" },
+    {
+      "ARM_NONE_EABI_ROOT": "C:\\Program Files (x86)\\Arm GNU Toolchain arm-none-eabi\\11.3 rel1",
+      "ARM_NONE_EABI_BIN": "${env.ARM_NONE_EABI_ROOT}\\bin",
+      "PATH": "${env.ARM_NONE_EABI_BIN};${env.ARM_NONE_EABI_ROOT}\\arm-none-eabi\\bin;${env.PATH}",
+      "INCLUDE": "${env.ARM_NONE_EABI_ROOT}\\include;${env.ARM_NONE_EABI_ROOT}\\arm-none-eabi\\include;${env.ARM_NONE_EABI_ROOT}\\lib\\gcc\\arm-none-eabi\\11.3.1\\include;${env.ARM_NONE_EABI_ROOT}\\lib\\gcc\\arm-none-eabi\\11.3.1\\include-fixed;${env.ARM_NONE_EABI_ROOT}\\lib\\gcc\\arm-none-eabi\\11.3.1\\plugin\\include;${env.ARM_NONE_EABI_ROOT}\\lib\\gcc\\arm-none-eabi\\11.3.1\\install-tools\\include;${env.ARM_NONE_EABI_ROOT}\\arm-none-eabi\\include\\c++\\11.3.1",
+      "environment": "gcc_custom"
+    }
+  ],
+  "configurations": [
+    {
+      "environments": [
+        {
+          "OPENOCD_ROOT": "C:\\Program Files (x86)\\xpack-openocd-0.11.0-5",
+          "OPENOCD_BIN": "${env.OPENOCD_ROOT}\\bin",
+          "OPENOCD_SCRIPTS": "${env.OPENOCD_ROOT}\\scripts",
+          "OPENOCD_INTERFACE": "${env.OPENOCD_SCRIPTS}\\interface",
+          "OPENOCD_TARGET": "${env.OPENOCD_SCRIPTS}\\target"
+        },
+        {
+          "ARM_NONE_EABI_ROOT": "C:\\Program Files (x86)\\Arm GNU Toolchain arm-none-eabi\\11.3 rel1",
+          "ARM_NONE_EABI_BIN": "${env.ARM_NONE_EABI_ROOT}\\bin"
+        },
+        {
+          "BUILD_ROOT": "${projectDir}\\out\\build\\${name}",
+          "INSTALL_ROOT": "${projectDir}\\out\\install\\${name}"
+        },
+        { "CMAKE_EXE": "C:\\Program Files\\CMake\\bin\\cmake.exe" }
+      ],
+      "name": "STM32-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "gcc-arm", "gcc_custom" ],
+      "buildRoot": "${env.BUILD_ROOT}",
+      "installRoot": "${env.INSTALL_ROOT}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "cmakeToolchain": "toolchain.cmake",
+      "cmakeExecutable": "${env.CMAKE_EXE}",
+      "intelliSenseMode": "linux-gcc-arm"
+      //"intellisenseOptions": { "useCompilerDefaults": false }
+    },
+    {
+      "environments": [
+        { "BUILD_ROOT": "${projectDir}\\out\\build\\${name}" },
+        { "CMAKE_EXE": "C:\\Program Files\\CMake\\bin\\cmake.exe" }
+      ],
+      "name": "STM32-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "gcc-arm", "gcc_custom" ],
+      "buildRoot": "${env.BUILD_ROOT}",
+      "installRoot": "${env.INSTALL_ROOT}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "cmakeToolchain": "toolchain.cmake",
+      "cmakeExecutable": "${env.CMAKE_EXE}"
+    }
+  ]
+}
