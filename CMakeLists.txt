@@ -80,19 +80,6 @@ target_link_options(${PROJECT_NAME} PRIVATE
         -Wl,--gc-sections
         -ffreestanding
         -Xlinker -print-memory-usage
-        #-nostdlib   
-        #-nolibc 
-        #-lgcc
-        #-Wl,--start-group
-        #-lc
-        #-lm
-        #-Wl,--end-group
-
-        #-lnosys
-        #-lgcc
-        #-nostdlib
-        #-nodefaultlibs
-        #-nostartfiles
         )
 
         
@@ -103,9 +90,7 @@ add_custom_command(TARGET ${PROJECT_NAME}
         POST_BUILD
         VERBATIM
         COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_NAME}.elf ${PROJECT_NAME}.bin
-      #COMMAND ${CMAKE_OBJCOPY} -O ihex ${EXECUTABLE} ${PROJECT_NAME}.hex
         COMMAND ${CMAKE_SIZE} ${PROJECT_NAME}.elf
         COMMAND ${CMAKE_OBJDUMP} -h ${PROJECT_NAME}.elf
-        #arm-none-eabi-objdump -D -bbinary -marm <input.bin> -Mforce-thumb > <output.s>
         )
 

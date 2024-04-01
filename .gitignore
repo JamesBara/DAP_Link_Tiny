@@ -365,3 +365,4 @@ FodyWeavers.xsd
 # CMake stuff
 out/
 **/CMakeCache.txt
+**/CMakeSettings.json
