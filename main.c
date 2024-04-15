@@ -3,36 +3,22 @@
 #include "DAP_config.h"
 #include "DAP.h"
 
-struct endpoint_1_buffer_type
+struct endpoint_buffer_type
 {
 	uint8_t buffer[DAP_PACKET_SIZE * DAP_PACKET_COUNT];
 	uint32_t head;
 	uint32_t tail;
 };
 
-struct endpoint_2_buffer_type
-{
-	uint8_t buffer[DAP_PACKET_SIZE * DAP_PACKET_COUNT];
-	uint32_t head;
-	uint32_t tail;
-};
 
-enum events
-{
-	NO_EVENT,
-	RECEPTION_COMPLETE,
-};
-
-static struct endpoint_1_buffer_type endpoint_1_buffer;
-static struct endpoint_2_buffer_type endpoint_2_buffer;
+static struct endpoint_buffer_type endpoint_1_out_buffer;
+static struct endpoint_buffer_type endpoint_1_in_buffer;
 static usbd_callbacks usbd_handle;
-static enum events event = NO_EVENT;
+static bool has_data_been_received = false;
 
 
-static void usbd_prepare_to_transmit(void *buf, size_t sz);
-static void usbd_continue_to_transmit(void *buf, size_t sz);
-static uint16_t usbd_continue_to_receive(void *buf);
-static void endpoint_2_in(void);
+static void endpoint_1_transmit_packet(void *buf, size_t sz);
+static void endpoint_1_in(void);
 static void endpoint_1_out(void);
 
 
@@ -72,19 +58,26 @@ int main(void)
 	NVIC_SetPriority(USB_IRQn, ((1UL << __NVIC_PRIO_BITS) - 1UL));
 	NVIC_EnableIRQ(USB_IRQn);
 	usbd_register_endpoint_out_cb(&usbd_handle, endpoint_1_out);
-	usbd_register_endpoint_in_cb(&usbd_handle, endpoint_2_in);
+	usbd_register_endpoint_in_cb(&usbd_handle, endpoint_1_in);
 	usbd_register_dap_setup_cb(&usbd_handle, DAP_SETUP);
 	usbd_init();
 
 	while (1)
 	{
-		if (event == RECEPTION_COMPLETE)
+		if (has_data_been_received == true)
 		{		
-			endpoint_2_buffer.head = (DAP_ExecuteCommand(&endpoint_1_buffer.buffer[endpoint_1_buffer.tail] ,&endpoint_2_buffer.buffer[endpoint_2_buffer.head]) & 0xFFFF);
-			event = NO_EVENT;
-			if (endpoint_2_buffer.head)
+			endpoint_1_in_buffer.head = (DAP_ExecuteCommand(&endpoint_1_out_buffer.buffer[endpoint_1_out_buffer.tail] ,&endpoint_1_in_buffer.buffer[endpoint_1_in_buffer.head]) & 0xFFFFU);
+			
+			/*Flush the out buffer.*/
+			endpoint_1_out_buffer.head = 0x0U;
+			endpoint_1_out_buffer.tail = 0x0U;	
+			/*Enable the out direction again.*/
+			USBD_ENDPOINT_SET_RX_VALID(USBD_ENDPOINT_1);
+			has_data_been_received = false;
+			/*Start transmiting*/
+			if (endpoint_1_in_buffer.head)
 			{
-				usbd_prepare_to_transmit(&endpoint_2_buffer.buffer[endpoint_2_buffer.tail], (endpoint_2_buffer.head - endpoint_2_buffer.tail));
+				endpoint_1_transmit_packet(&endpoint_1_in_buffer.buffer[endpoint_1_in_buffer.tail], (endpoint_1_in_buffer.head - endpoint_1_in_buffer.tail));
 			}
 		}
 	}
@@ -98,131 +91,42 @@ void USB_IRQHandler(void)
 }
 
 
-static void endpoint_2_in(void)
+static void endpoint_1_in(void)
 {
-	uint32_t packet_size = _MACRO_MIN((endpoint_2_buffer.head - endpoint_2_buffer.tail), USBD_FS_MAXPACKETSIZE);
-	endpoint_2_buffer.tail = ((endpoint_2_buffer.tail + packet_size) % (DAP_PACKET_SIZE * DAP_PACKET_COUNT));
+	uint32_t packet_size = _MACRO_MIN((endpoint_1_in_buffer.head - endpoint_1_in_buffer.tail), USBD_FS_MAXPACKETSIZE);
+	endpoint_1_in_buffer.tail = ((endpoint_1_in_buffer.tail + packet_size) % (DAP_PACKET_SIZE * DAP_PACKET_COUNT));
 	/*Transmission is complete.*/
-	if (endpoint_2_buffer.tail == endpoint_2_buffer.head)
+	if (endpoint_1_in_buffer.tail == endpoint_1_in_buffer.head)
 	{
-		endpoint_2_buffer.head = 0;
-		endpoint_2_buffer.tail = 0;	
-		if (USBD_ENDPOINT_2_GET_DOUBLE_BUFFER())
-		{
-			USBD_ENDPOINT_2_CLEAR_DOUBLE_BUFFER();
-		}
+		endpoint_1_in_buffer.head = 0;
+		endpoint_1_in_buffer.tail = 0;	
 		return;
 	}
-	usbd_continue_to_transmit(&endpoint_2_buffer.buffer[endpoint_2_buffer.tail], _MACRO_MIN((endpoint_2_buffer.head - endpoint_2_buffer.tail), USBD_FS_MAXPACKETSIZE));
+	endpoint_1_transmit_packet(&endpoint_1_in_buffer.buffer[endpoint_1_in_buffer.tail], _MACRO_MIN((endpoint_1_in_buffer.head - endpoint_1_in_buffer.tail), USBD_FS_MAXPACKETSIZE));
 }
 
-static void usbd_prepare_to_transmit(void* buf, size_t sz)
+static void endpoint_1_transmit_packet(void* buf, size_t sz)
 {
-	/*Select whether to use double buffering or not.*/
-	if (sz <= USBD_FS_MAXPACKETSIZE)
-	{
-		USBD_ENDPOINT_2_SET_TX_COUNT((uint16_t)sz);
-		usbd_copy_to_pma(buf, USBD_ENDPOINT_2_TX_PMA_BUF, (uint16_t)sz);
-		USBD_ENDPOINT_2_SET_VALID();
-	}
-	else
-	{
-		USBD_ENDPOINT_2_SET_DOUBLE_BUFFER();
-		/*Select which buffer to use.*/
-		if (!USBD_ENDPOINT_2_GET_DTOG_TX() && USBD_ENDPOINT_2_GET_SWBUF_TX())
-		{
-			USBD_ENDPOINT_2_SET_TX_1_COUNT((uint16_t)sz);
-			usbd_copy_to_pma(buf, USBD_ENDPOINT_2_TX_1_PMA_BUF, USBD_FS_MAXPACKETSIZE);
-		}
-		else
-		{
-			USBD_ENDPOINT_2_SET_TX_0_COUNT((uint16_t)sz);
-			usbd_copy_to_pma(buf, USBD_ENDPOINT_2_TX_0_PMA_BUF, USBD_FS_MAXPACKETSIZE);
-			if (USBD_ENDPOINT_2_GET_DTOG_TX() == USBD_ENDPOINT_2_GET_SWBUF_TX())
-			{
-				USBD_ENDPOINT_2_TOGGLE_SWBUF_TX();
-			}
-		}
-		USBD_ENDPOINT_2_SET_VALID();
-	}
+	USBD_ENDPOINT_1_SET_TX_COUNT((uint16_t)sz);
+	usbd_copy_to_pma(buf, USBD_ENDPOINT_1_TX_PMA_BUF, (uint16_t)sz);
+	USBD_ENDPOINT_SET_TX_VALID(USBD_ENDPOINT_1);
 }
-
-static void usbd_continue_to_transmit(void* buf, size_t sz)
-{
-	/*Select which buffer to use.*/
-	if (!USBD_ENDPOINT_2_GET_DTOG_TX() && USBD_ENDPOINT_2_GET_SWBUF_TX())
-	{
-		usbd_copy_to_pma(buf, USBD_ENDPOINT_2_TX_1_PMA_BUF, (uint16_t)sz);
-	}
-	else
-	{
-		usbd_copy_to_pma(buf, USBD_ENDPOINT_2_TX_0_PMA_BUF, (uint16_t)sz);
-		if (USBD_ENDPOINT_2_GET_DTOG_TX() == USBD_ENDPOINT_2_GET_SWBUF_TX())
-		{
-			USBD_ENDPOINT_2_TOGGLE_SWBUF_TX();
-		}
-	}
-}
-
-
 
 
 static void endpoint_1_out(void)
 {
 
-	uint16_t packet_size;
-	if (!USBD_ENDPOINT_1_GET_DOUBLE_BUFFER())
+	uint16_t packet_size = USBD_ENDPOINT_1_GET_RX_COUNT();;
+	usbd_read_from_pma(USBD_ENDPOINT_1_RX_PMA_BUF, &endpoint_1_out_buffer.buffer[endpoint_1_out_buffer.head], packet_size);
+	endpoint_1_out_buffer.head = ((endpoint_1_out_buffer.head + packet_size) % (DAP_PACKET_SIZE * DAP_PACKET_COUNT));
+	/*If data received is max packet and the buffer is not full continue receiving.*/
+	if (packet_size == USBD_FS_MAXPACKETSIZE || endpoint_1_out_buffer.head != endpoint_1_out_buffer.tail)
 	{
-		/*Reset the buffer pointers.*/
-		endpoint_1_buffer.head = 0x0U;
-		endpoint_1_buffer.tail = 0x0U;
-
-		packet_size = USBD_ENDPOINT_1_GET_RX_COUNT();
-
-
-		usbd_read_from_pma(USBD_ENDPOINT_1_RX_PMA_BUF, &endpoint_1_buffer.buffer[endpoint_1_buffer.head], packet_size);
-		endpoint_1_buffer.head = ((endpoint_1_buffer.head + packet_size) % (DAP_PACKET_SIZE * DAP_PACKET_COUNT));
-		if (packet_size == USBD_FS_MAXPACKETSIZE)
-		{
-			USBD_ENDPOINT_1_SET_DOUBLE_BUFFER();
-		}
-		else
-		{
-			event = RECEPTION_COMPLETE;
-			USBD_ENDPOINT_1_SET_VALID();
-		}
+		USBD_ENDPOINT_SET_RX_VALID(USBD_ENDPOINT_1);
 	}
 	else
 	{
-		packet_size = usbd_continue_to_receive(&endpoint_1_buffer.buffer[endpoint_1_buffer.head]);
-		endpoint_1_buffer.head = ((endpoint_1_buffer.head + packet_size) % (DAP_PACKET_SIZE * DAP_PACKET_COUNT));
-		if (packet_size < USBD_FS_MAXPACKETSIZE || endpoint_1_buffer.head == endpoint_1_buffer.tail)
-		{
-			event = RECEPTION_COMPLETE;
-			USBD_ENDPOINT_1_CLEAR_DOUBLE_BUFFER();
-		}
+		/*If the packet received was a short packet or the buffer is full stop receiving.*/
+		has_data_been_received = true;
 	}
-}
-
-static uint16_t usbd_continue_to_receive(void* buf)
-{
-	uint16_t cnt;
-	/*Select which buffer to use.*/
-	if ((!USBD_ENDPOINT_1_GET_DTOG_RX() && USBD_ENDPOINT_1_GET_SWBUF_RX()) || (USBD_ENDPOINT_1_GET_DTOG_RX() && USBD_ENDPOINT_1_GET_SWBUF_RX()))
-	{
-		cnt = USBD_ENDPOINT_1_GET_RX_1_COUNT();
-		usbd_read_from_pma(USBD_ENDPOINT_1_RX_1_PMA_BUF, buf, USBD_FS_MAXPACKETSIZE);
-	}
-	else
-	{
-		cnt = USBD_ENDPOINT_1_GET_RX_0_COUNT();
-		usbd_read_from_pma(USBD_ENDPOINT_1_RX_0_PMA_BUF, buf, USBD_FS_MAXPACKETSIZE);
-	}
-
-	if (USBD_ENDPOINT_1_GET_DTOG_RX() == USBD_ENDPOINT_1_GET_SWBUF_RX())
-	{
-		USBD_ENDPOINT_1_TOGGLE_SWBUF_RX();
-	}
-
-	return cnt;
 }

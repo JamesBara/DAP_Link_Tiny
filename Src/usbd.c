@@ -252,7 +252,7 @@ static const struct usbd_conf_descriptor usbd_conf_desc =
 		{
 			.bLength = 0x7U, /*!<7 bytes.*/
 			.bDescriptorType = USBD_DESC_TYPE_ENDPOINT,
-			.bEndpointAddress = (0x80U | USBD_ENDPOINT_2),
+			.bEndpointAddress = (0x80U | USBD_ENDPOINT_1),
 			.bmAttributes = 0x2U, /*!<Bulk.*/
 			.wMaxPacketSize = USBD_FS_MAXPACKETSIZE,
 			.bInterval = 0x0U
@@ -377,9 +377,6 @@ static inline void usbd_reset(void);
 static inline void usbd_suspend(void);
 static inline void usbd_wakeup(void);
 
-
-uint32_t dbg_cntr;
-
 void usbd_copy_to_pma(uint8_t *src, uint16_t *dst, uint16_t sz)
 {
 	uint16_t half_cnt, tmp_val;
@@ -434,7 +431,7 @@ static void usbd_ep_0_write(void *buf, uint16_t sz)
 	uint16_t *reg = USBD_ENDPOINT_0_TX_PMA_BUF;
 	USBD_ENDPOINT_0_SET_TX_COUNT(sz);
 	usbd_copy_to_pma((uint8_t*)buf, reg, sz);
-	USBD_ENDPOINT_0_SET_TX_VALID();
+	USBD_ENDPOINT_SET_TX_VALID(USBD_ENDPOINT_0);
 }
 
 static uint16_t usbd_ep_0_read(void* buf)
@@ -444,13 +441,13 @@ static uint16_t usbd_ep_0_read(void* buf)
 	uint16_t cnt;
 	cnt = USBD_ENDPOINT_0_GET_RX_COUNT();
 	usbd_read_from_pma(reg, (uint8_t*)buf, cnt);
-	USBD_ENDPOINT_0_SET_RX_VALID();
+	USBD_ENDPOINT_SET_RX_VALID(USBD_ENDPOINT_0);
 	return cnt;
 }
 
 static void usbd_get_status(usbd_setup_packet_type setup)
 {
-	uint8_t ep_num, buf[2] = { 0x0U, 0x0U };
+	uint8_t buf[2] = { 0x0U, 0x0U };
 
 	switch (setup.bmRequestType & USBD_RECIPIENT_MASK)
 	{
@@ -466,20 +463,7 @@ static void usbd_get_status(usbd_setup_packet_type setup)
 		}
 		break;
 	case USBD_ENDPOINT_MASK:
-		ep_num = (setup.wIndex & 0xFU);
-		switch (ep_num)
-		{
-		case USBD_ENDPOINT_1:
-			buf[0] = USBD_ENDPOINT_1_GET_STALL();
-			break;
-		case USBD_ENDPOINT_2:
-			buf[0] = USBD_ENDPOINT_2_GET_STALL();
-			break;
-		default:
-			USBD_ENDPOINT_0_SET_STALL();
-			return;
-			break;
-		}
+		buf[0] = USBD_ENDPOINT_GET_STALL((setup.wIndex & 0xFU), (setup.wIndex & 0x80));
 		break;
 	default:
 		USBD_ENDPOINT_0_SET_STALL();
@@ -494,25 +478,21 @@ static void usbd_get_status(usbd_setup_packet_type setup)
 
 static void usbd_clear_feature(usbd_callbacks *ep_cb, usbd_setup_packet_type setup)
 {
-	uint8_t ep_num = (setup.wIndex & 0xFU);
 	/*Remote wakeup is not supported.*/
 	switch (setup.bmRequestType & USBD_RECIPIENT_MASK)
 	{
 	case USBD_ENDPOINT_MASK:
-		switch (ep_num)
+		if (!(setup.wIndex & 0x80))
 		{
-		case USBD_ENDPOINT_1:
-			USBD_ENDPOINT_1_CLEAR_STALL();
-			ep_cb->usbd_endpoint_in();
-			break;
-		case USBD_ENDPOINT_2:
-			USBD_ENDPOINT_2_CLEAR_STALL();
-			ep_cb->usbd_endpoint_out();
-			break;
-		default:
-			USBD_ENDPOINT_0_SET_STALL();
-			return;
-			break;
+			USBD_ENDPOINT_CLEAR_RX_STALL(setup.wIndex & 0xFU);
+		}
+		else
+		{
+			USBD_ENDPOINT_CLEAR_TX_STALL(setup.wIndex & 0xFU);
+		}
+		if (ep_cb->resume_from_stall != NULL)
+		{
+			ep_cb->resume_from_stall();
 		}
 		break;
 	default:
@@ -526,23 +506,17 @@ static void usbd_clear_feature(usbd_callbacks *ep_cb, usbd_setup_packet_type set
 
 static void usbd_set_feature(usbd_setup_packet_type setup)
 {
-	uint8_t ep_num = (setup.wIndex & 0xFU);
 	/*Remote wakeup and test mode are not supported.*/
 	switch (setup.bmRequestType & USBD_RECIPIENT_MASK)
 	{
 	case USBD_ENDPOINT_MASK:
-		switch (ep_num)
+		if (!(setup.wIndex & 0x80))
 		{
-		case USBD_ENDPOINT_1:
-			USBD_ENDPOINT_1_SET_STALL();
-			break;
-		case USBD_ENDPOINT_2:
-			USBD_ENDPOINT_2_SET_STALL();
-			break;
-		default:
-			USBD_ENDPOINT_0_SET_STALL();
-			return;
-			break;
+			USBD_ENDPOINT_SET_RX_STALL(setup.wIndex & 0xFU);
+		}
+		else
+		{
+			USBD_ENDPOINT_SET_TX_STALL(setup.wIndex & 0xFU);
 		}
 		break;
 	default:
@@ -632,14 +606,12 @@ static void usbd_set_configuration(usbd_callbacks *ep_cb, usbd_setup_packet_type
 	if (!(setup.wValue & 0xFFU))
 	{
 		USBD_CLEAR_ENDPOINT_1_CONFIGURATION();
-		USBD_CLEAR_ENDPOINT_2_CONFIGURATION();
 		setup_cb = usbd_addressed_setup;
 	}
 	else
 	{
 		/*There is only 1 configuration and 2 endpoints.*/
 		USBD_SET_ENDPOINT_1_CONFIGURATION();
-		USBD_SET_ENDPOINT_2_CONFIGURATION();
 		setup_cb = usbd_configured_setup;
 		if (ep_cb->dap_init != NULL)
 		{
@@ -706,7 +678,6 @@ static void usbd_default_setup(usbd_callbacks *ep_cb)
 		USBD_ENDPOINT_0_SET_STALL();
 		return;
 	}
-//	__asm__("BKPT");
 	switch (setup.bmRequestType & USBD_TYPE_MASK)
 	{
 		case (USBD_STANDARD):		
@@ -804,7 +775,6 @@ static void usbd_configured_setup(usbd_callbacks *ep_cb)
 			usbd_set_feature(setup);
 			break;
 		case USBD_GET_DESCRIPTOR:
-			dbg_cntr++;
 			usbd_get_descriptor(setup);
 			break;
 		case USBD_GET_CONFIGURATION:
@@ -912,7 +882,7 @@ static void usbd_ctr(usbd_callbacks *ep_cb, uint8_t ep_num, uint8_t dir, uint8_t
 	{
 		ep_cb->usbd_endpoint_out();
 	}
-	else if (ep_num == USBD_ENDPOINT_2 && dir == USBD_DIR_IN && ep_cb->usbd_endpoint_in != NULL)
+	else if (ep_num == USBD_ENDPOINT_1 && dir == USBD_DIR_IN && ep_cb->usbd_endpoint_in != NULL)
 	{
 		ep_cb->usbd_endpoint_in();
 	}
@@ -931,7 +901,6 @@ static inline void usbd_reset(void)
 	/*Clear all endpoints.*/
 	USBD_CLEAR_ENDPOINT_0_CONFIGURATION();
 	USBD_CLEAR_ENDPOINT_1_CONFIGURATION();
-	USBD_CLEAR_ENDPOINT_2_CONFIGURATION();
 	/*Configure endpoint 0*/
 	USBD_SET_ENDPOINT_0_CONFIGURATION();
 	setup_cb = usbd_default_setup;
@@ -1002,9 +971,6 @@ void usbd_init(void)
 	_MACRO_SET_BIT(USBD->bcdr, USBD_BCDR_DP_PULLUP_POS);
 }
 
-
-
-//uint16_t istr_dbg[100];
 void usbd_irq_handler(usbd_callbacks *ep_cb)
 {
 	uint8_t ep, dir, setup;
@@ -1014,12 +980,6 @@ void usbd_irq_handler(usbd_callbacks *ep_cb)
 	dir = _MACRO_GET_BIT(istr, USBD_ISTR_DIR_POS);
 	setup = 0;
 	ep_val = 0;
-	//istr_dbg[dbg_cntr] = istr;
-	//if (dbg_cntr >= 8)
-	////{
-	//	__asm__("BKPT");
-	//}
-	//dbg_cntr++;
 	if (_MACRO_GET_BIT(istr, USBD_ISTR_CTR_POS))
 	{
 		ep_val = *USBD_ENDPOINT_N_REG(ep);

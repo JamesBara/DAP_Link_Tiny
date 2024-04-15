@@ -504,12 +504,10 @@ typedef struct
 #define USBD_BTABLE_REG(ep_num, offset) (uint16_t*) (USBD_SRAM_BASE_ADDR + (USBD->btable) + ((ep_num) << 0x3U) + (offset))
 
 #define USBD_ENDPOINT_0 (0x0U)
-#define USBD_ENDPOINT_1 (0x1U) /*OUT Bulk endpoint*/
-#define USBD_ENDPOINT_2 (0x2U) /*IN Bulk endpoint*/
+#define USBD_ENDPOINT_1 (0x1U) /*OUT/IN Bulk endpoint*/
 
 #define USBD_ENDPOINT_0_REG (uint16_t*) (USB_EP_BASE_ADDR) /*!< Pointer to endpoint 0 register. */
 #define USBD_ENDPOINT_1_REG (uint16_t*) (USB_EP_BASE_ADDR + 4) /*!< Pointer to endpoint 1 register. */
-#define USBD_ENDPOINT_2_REG (uint16_t*) (USB_EP_BASE_ADDR + 8) /*!< Pointer to endpoint 2 register. */
 
 /*bcdr bits*/
 #define USBD_BCDR_DP_PULLUP_POS (0xFU)
@@ -686,22 +684,17 @@ typedef struct
 /*The first 24 bytes in the packet memory area are used by the buffer table.*/
 #define USBD_ENDPOINT_0_IN_ADDR_OFFSET (0x18U) /*!< The next 64 bytes by endpoint 0 in direction.*/
 #define USBD_ENDPOINT_0_OUT_ADDR_OFFSET (0x58U) /*!< The next 64 bytes by endpoint 0 out direction.*/
-#define USBD_ENDPOINT_1_OUT_ADDR_OFFSET (0x98U) /*!< The next 64 bytes are used by endpoint 1 out direction and 64 are reserved for double buffer.*/
-#define USBD_ENDPOINT_2_IN_ADDR_OFFSET (0x118U) /*!< The next 64 bytes are used by endpoint 2 in direction and 64 are reserved for double buffer.*/
+#define USBD_ENDPOINT_1_IN_ADDR_OFFSET (0x98U) /*!< The next 64 bytes are used by endpoint 1 in direction.*/
+#define USBD_ENDPOINT_1_OUT_ADDR_OFFSET (0xD8U) /*!< The next 64 bytes are used by endpoint 1 out direction.*/
 
 #define USBD_FS_MAXPACKETSIZE (0x40U)
 
 #define USBD_ENDPOINT_0_TX_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_0_IN_ADDR_OFFSET) /*!< Pointer to endpoint 0 in PMA buffer.*/
 #define USBD_ENDPOINT_0_RX_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_0_OUT_ADDR_OFFSET) /*!< Pointer to endpoint 0 out PMA buffer.*/
 
-#define USBD_ENDPOINT_1_RX_0_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_1_OUT_ADDR_OFFSET) /*!< Pointer to endpoint 1 in 0 PMA buffer.*/
-#define USBD_ENDPOINT_1_RX_1_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_1_OUT_ADDR_OFFSET + USBD_FS_MAXPACKETSIZE) /*!< Pointer to endpoint 1 in 1 PMA buffer.*/
-#define USBD_ENDPOINT_1_RX_PMA_BUF USBD_ENDPOINT_1_RX_1_PMA_BUF
+#define USBD_ENDPOINT_1_TX_PMA_BUF  (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_1_IN_ADDR_OFFSET)/*!< Pointer to endpoint 1 in PMA buffer.*/
+#define USBD_ENDPOINT_1_RX_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_1_OUT_ADDR_OFFSET) /*!< Pointer to endpoint 1 out PMA buffer.*/
 
-
-#define USBD_ENDPOINT_2_TX_0_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_2_IN_ADDR_OFFSET) /*!< Pointer to endpoint 2 out 0 PMA buffer.*/
-#define USBD_ENDPOINT_2_TX_1_PMA_BUF (uint16_t*)(USBD_SRAM_BASE_ADDR + USBD_ENDPOINT_2_IN_ADDR_OFFSET + USBD_FS_MAXPACKETSIZE) /*!< Pointer to endpoint 2 out 1 PMA buffer.*/
-#define USBD_ENDPOINT_2_TX_PMA_BUF USBD_ENDPOINT_2_TX_0_PMA_BUF /*!< Pointer to endpoint 2 out 0 PMA buffer.*/
 
 /*Hardcoded pma for endpoint 0*/
 #define USBD_ENDPOINT_0_CLEAR_TX_ADDR() do \
@@ -748,125 +741,48 @@ typedef struct
 
 /*Hardcoded pma for endpoint 1*/
 
-#define USBD_ENDPOINT_1_CLEAR_RX_0_ADDR() do \
+#define USBD_ENDPOINT_1_CLEAR_TX_ADDR() do \
 { \
 	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 8) = 0x0U; \
 }while(0)
 
-#define USBD_ENDPOINT_1_CLEAR_RX_0_COUNT() do \
+
+#define USBD_ENDPOINT_1_CLEAR_TX_COUNT() do \
 { \
 	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 10) = 0x0U; \
 }while(0)
 
-#define USBD_ENDPOINT_1_CLEAR_RX_1_ADDR() do \
+#define USBD_ENDPOINT_1_CLEAR_RX_ADDR() do \
 { \
 	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 12) = 0x0U; \
 }while(0)
 
-#define USBD_ENDPOINT_1_CLEAR_RX_1_COUNT() do \
+#define USBD_ENDPOINT_1_CLEAR_RX_COUNT() do \
 { \
 	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 14) = 0x0U; \
 }while(0)
 
-#define USBD_ENDPOINT_1_SET_RX_0_ADDR() do \
+#define USBD_ENDPOINT_1_SET_TX_ADDR() do \
 { \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 8) = (uint16_t)USBD_ENDPOINT_1_OUT_ADDR_OFFSET; \
+	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 8) = (uint16_t)(USBD_ENDPOINT_1_IN_ADDR_OFFSET); \
 }while(0)
 
-#define USBD_ENDPOINT_1_SET_RX_0_COUNT() do \
+#define USBD_ENDPOINT_1_SET_TX_COUNT(count) do \
 { \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 10) = USBD_SRAM_RX_COUNT_ALLOC(USBD_FS_MAXPACKETSIZE); \
+	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 10) = (uint16_t)(count); \
 }while(0)
 
-#define USBD_ENDPOINT_1_SET_RX_1_ADDR() do \
+#define USBD_ENDPOINT_1_SET_RX_ADDR() do \
 { \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 12) = (uint16_t)(USBD_ENDPOINT_1_OUT_ADDR_OFFSET + USBD_FS_MAXPACKETSIZE); \
+	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 12) = (uint16_t)(USBD_ENDPOINT_1_OUT_ADDR_OFFSET); \
 }while(0)
 
-#define USBD_ENDPOINT_1_SET_RX_1_COUNT() do \
+#define USBD_ENDPOINT_1_SET_RX_COUNT() do \
 { \
 	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 14) = USBD_SRAM_RX_COUNT_ALLOC(USBD_FS_MAXPACKETSIZE); \
 }while(0)
 
-#define USBD_ENDPOINT_1_GET_RX_0_COUNT() (uint16_t)((*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 10)) & USBD_SRAM_COUNT_MASK)
-
-#define USBD_ENDPOINT_1_GET_RX_1_COUNT() (uint16_t)((*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 14)) & USBD_SRAM_COUNT_MASK)
-
-#define USBD_ENDPOINT_1_GET_RX_COUNT() USBD_ENDPOINT_1_GET_RX_1_COUNT()
-
-
-
-
-/*Hardcoded pma for endpoint 2*/
-#define USBD_ENDPOINT_2_CLEAR_TX_0_ADDR() do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 16) = 0x0U; \
-}while(0)
-
-#define USBD_ENDPOINT_2_CLEAR_TX_0_COUNT() do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 18) = 0x0U; \
-}while(0)
-
-#define USBD_ENDPOINT_2_CLEAR_TX_1_ADDR() do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 20) = 0x0U; \
-}while(0)
-
-#define USBD_ENDPOINT_2_CLEAR_TX_1_COUNT() do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 22) = 0x0U; \
-}while(0)
-
-#define USBD_ENDPOINT_2_SET_TX_0_ADDR() do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 16) = (uint16_t)USBD_ENDPOINT_2_IN_ADDR_OFFSET; \
-}while(0)
-
-#define USBD_ENDPOINT_2_SET_TX_0_COUNT(count) do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 18) = (uint16_t)(count); \
-}while(0)
-
-#define USBD_ENDPOINT_2_SET_TX_1_ADDR() do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 20) = (uint16_t)(USBD_ENDPOINT_2_IN_ADDR_OFFSET + USBD_FS_MAXPACKETSIZE); \
-}while(0)
-
-#define USBD_ENDPOINT_2_SET_TX_1_COUNT(count) do \
-{ \
-	*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 22) = (uint16_t)(count); \
-}while(0)
-
-#define USBD_ENDPOINT_2_SET_TX_COUNT(count) USBD_ENDPOINT_2_SET_TX_0_COUNT(count)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#define USBD_ENDPOINT_1_GET_RX_COUNT() (uint16_t)((*(uint16_t*)(USBD_SRAM_BASE_ADDR + (USBD->btable) + 14)) & USBD_SRAM_COUNT_MASK)
 
 /*Hardcoded configurations of endpoints.*/
 #define USBD_CLEAR_ENDPOINT_0_CONFIGURATION() do \
@@ -876,7 +792,7 @@ typedef struct
 	USBD_ENDPOINT_0_CLEAR_TX_COUNT(); \
 	USBD_ENDPOINT_0_CLEAR_RX_ADDR(); \
 	USBD_ENDPOINT_0_CLEAR_RX_COUNT(); \
-	ep_val = USBD_EP_CONFIGURATION(ep_val, 0x0U, 0x0U, USBD_ENDPOINT_0, 0x0U, (USBD_EP_DTOG_RX_MASK | USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_STAT_TX_MASK)); \
+	ep_val = USBD_EP_CONFIGURATION(ep_val, 0x0U, 0x0U, USBD_ENDPOINT_0, 0x0U, USBD_EP_T_MASK); \
 	(!_MACRO_GET_BIT(ep_val, USBD_EP_CTR_RX_POS)) ? (_MACRO_SET_BIT(ep_val, USBD_EP_CTR_RX_POS)) : (_MACRO_CLEAR_BIT(ep_val, USBD_EP_CTR_RX_POS)); \
 	(!_MACRO_GET_BIT(ep_val, USBD_EP_CTR_TX_POS)) ? (_MACRO_SET_BIT(ep_val, USBD_EP_CTR_TX_POS)) : (_MACRO_CLEAR_BIT(ep_val, USBD_EP_CTR_TX_POS)); \
 	 *USBD_ENDPOINT_0_REG = ep_val; \
@@ -885,27 +801,14 @@ typedef struct
 #define USBD_CLEAR_ENDPOINT_1_CONFIGURATION() do \
 { \
 	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	USBD_ENDPOINT_1_CLEAR_RX_0_ADDR(); \
-	USBD_ENDPOINT_1_CLEAR_RX_0_COUNT(); \
-	USBD_ENDPOINT_1_CLEAR_RX_1_ADDR(); \
-	USBD_ENDPOINT_1_CLEAR_RX_1_COUNT(); \
-	ep_val = USBD_EP_CONFIGURATION(ep_val, 0x0U, 0x0U, USBD_ENDPOINT_1, 0x0U, (USBD_EP_DTOG_RX_MASK | USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_STAT_TX_MASK)); \
+	USBD_ENDPOINT_1_CLEAR_TX_ADDR(); \
+	USBD_ENDPOINT_1_CLEAR_TX_COUNT(); \
+	USBD_ENDPOINT_1_CLEAR_RX_ADDR(); \
+	USBD_ENDPOINT_1_CLEAR_RX_COUNT(); \
+	ep_val = USBD_EP_CONFIGURATION(ep_val, 0x0U, 0x0U, USBD_ENDPOINT_1, 0x0U, USBD_EP_T_MASK); \
 	(!_MACRO_GET_BIT(ep_val, USBD_EP_CTR_RX_POS)) ? (_MACRO_SET_BIT(ep_val, USBD_EP_CTR_RX_POS)) : (_MACRO_CLEAR_BIT(ep_val, USBD_EP_CTR_RX_POS)); \
 	(!_MACRO_GET_BIT(ep_val, USBD_EP_CTR_TX_POS)) ? (_MACRO_SET_BIT(ep_val, USBD_EP_CTR_TX_POS)) : (_MACRO_CLEAR_BIT(ep_val, USBD_EP_CTR_TX_POS)); \
 	 *USBD_ENDPOINT_1_REG = ep_val; \
-}while(0)
-
-#define USBD_CLEAR_ENDPOINT_2_CONFIGURATION() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	USBD_ENDPOINT_2_CLEAR_TX_0_ADDR(); \
-	USBD_ENDPOINT_2_CLEAR_TX_0_COUNT(); \
-	USBD_ENDPOINT_2_CLEAR_TX_1_ADDR(); \
-	USBD_ENDPOINT_2_CLEAR_TX_1_COUNT(); \
-	ep_val = USBD_EP_CONFIGURATION(ep_val, 0x0U, 0x0U, USBD_ENDPOINT_2, 0x0U, (USBD_EP_DTOG_RX_MASK | USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_STAT_TX_MASK)); \
-	(!_MACRO_GET_BIT(ep_val, USBD_EP_CTR_RX_POS)) ? (_MACRO_SET_BIT(ep_val, USBD_EP_CTR_RX_POS)) : (_MACRO_CLEAR_BIT(ep_val, USBD_EP_CTR_RX_POS)); \
-	(!_MACRO_GET_BIT(ep_val, USBD_EP_CTR_TX_POS)) ? (_MACRO_SET_BIT(ep_val, USBD_EP_CTR_TX_POS)) : (_MACRO_CLEAR_BIT(ep_val, USBD_EP_CTR_TX_POS)); \
-	 *USBD_ENDPOINT_2_REG = ep_val; \
 }while(0)
 
 #define USBD_SET_ENDPOINT_0_CONFIGURATION() do \
@@ -914,26 +817,66 @@ typedef struct
 	USBD_ENDPOINT_0_SET_TX_ADDR(); \
 	USBD_ENDPOINT_0_SET_RX_ADDR(); \
 	USBD_ENDPOINT_0_SET_RX_COUNT(); \
-	*USBD_ENDPOINT_0_REG = USBD_EP_CONFIGURATION(ep_val, USBD_HW_EP_TYPE_CONTROL, 0x0U, USBD_ENDPOINT_0, (USBD_EP_STAT_RX_VALID | USBD_EP_STAT_TX_NAK), (USBD_EP_DTOG_RX_MASK | USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_STAT_TX_MASK)); \
+	*USBD_ENDPOINT_0_REG = USBD_EP_CONFIGURATION(ep_val, USBD_HW_EP_TYPE_CONTROL, 0x0U, USBD_ENDPOINT_0, (USBD_EP_STAT_RX_VALID | USBD_EP_STAT_TX_NAK), USBD_EP_T_MASK); \
 }while(0)
 
 #define USBD_SET_ENDPOINT_1_CONFIGURATION() do \
 { \
 	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	USBD_ENDPOINT_1_SET_RX_0_ADDR(); \
-	USBD_ENDPOINT_1_SET_RX_0_COUNT(); \
-	USBD_ENDPOINT_1_SET_RX_1_ADDR(); \
-	USBD_ENDPOINT_1_SET_RX_1_COUNT(); \
-	*USBD_ENDPOINT_1_REG = USBD_EP_CONFIGURATION(ep_val, USBD_HW_EP_TYPE_BULK, 0x0U, USBD_ENDPOINT_1, USBD_EP_STAT_RX_VALID, (USBD_EP_DTOG_RX_MASK | USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_STAT_TX_MASK)); \
+	USBD_ENDPOINT_1_SET_TX_ADDR(); \
+	USBD_ENDPOINT_1_SET_RX_ADDR(); \
+	USBD_ENDPOINT_1_SET_RX_COUNT(); \
+	*USBD_ENDPOINT_1_REG = USBD_EP_CONFIGURATION(ep_val, USBD_HW_EP_TYPE_BULK, 0x0U, USBD_ENDPOINT_1, (USBD_EP_STAT_RX_VALID | USBD_EP_STAT_TX_NAK), USBD_EP_T_MASK); \
 }while(0)
 
-#define USBD_SET_ENDPOINT_2_CONFIGURATION() do \
+/*Generic commands.*/
+
+#define USBD_ENDPOINT_SET_TX_STALL(ep_num) do \
 { \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	USBD_ENDPOINT_2_SET_TX_0_ADDR(); \
-	USBD_ENDPOINT_2_SET_TX_1_ADDR(); \
-	*USBD_ENDPOINT_2_REG = USBD_EP_CONFIGURATION(ep_val, USBD_HW_EP_TYPE_BULK, 0x0U, USBD_ENDPOINT_2, USBD_EP_STAT_TX_NAK, (USBD_EP_DTOG_RX_MASK | USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_STAT_TX_MASK)); \
+	uint16_t ep_val = *USBD_ENDPOINT_N_REG(ep_num); \
+	if (_MACRO_GET_BIT_VAL(ep_val, USBD_EP_STAT_MASK, USBD_EP_STAT_TX_POS) != USBD_EP_STAT_DISABLED) \
+	*USBD_ENDPOINT_N_REG(ep_num) = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_STALL, USBD_EP_STAT_TX_MASK); \
 }while(0)
+
+#define USBD_ENDPOINT_SET_RX_STALL(ep_num) do \
+{ \
+	uint16_t ep_val = *USBD_ENDPOINT_N_REG(ep_num); \
+	if (_MACRO_GET_BIT_VAL(ep_val, USBD_EP_STAT_MASK, USBD_EP_STAT_RX_POS) != USBD_EP_STAT_DISABLED) \
+	*USBD_ENDPOINT_N_REG(ep_num) = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_STALL, USBD_EP_STAT_RX_MASK); \
+}while(0)
+
+#define USBD_ENDPOINT_CLEAR_TX_STALL(ep_num) do \
+{ \
+	uint16_t ep_val = *USBD_ENDPOINT_N_REG(ep_num); \
+	if (_MACRO_GET_BIT_VAL(ep_val, USBD_EP_STAT_MASK, USBD_EP_STAT_TX_POS) == USBD_EP_STAT_STALL) \
+	*USBD_ENDPOINT_N_REG(ep_num) = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_NAK, (USBD_EP_STAT_TX_MASK | USBD_EP_DTOG_TX_MASK)); \
+}while(0)
+
+#define USBD_ENDPOINT_CLEAR_RX_STALL(ep_num) do \
+{ \
+	uint16_t ep_val = *USBD_ENDPOINT_N_REG(ep_num); \
+	if (_MACRO_GET_BIT_VAL(ep_val, USBD_EP_STAT_MASK, USBD_EP_STAT_RX_POS) == USBD_EP_STAT_STALL) \
+	*USBD_ENDPOINT_N_REG(ep_num) = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, (USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_RX_MASK)); \
+}while(0)
+
+#define USBD_ENDPOINT_GET_STALL(ep_num, dir) !(dir) \
+	? (_MACRO_GET_BIT_VAL(*USBD_ENDPOINT_N_REG(ep_num), USBD_EP_STAT_MASK, USBD_EP_STAT_RX_POS) != USBD_EP_STAT_STALL) ? 0x0U : 0x1U \
+	: (_MACRO_GET_BIT_VAL(*USBD_ENDPOINT_N_REG(ep_num), USBD_EP_STAT_MASK, USBD_EP_STAT_TX_POS) != USBD_EP_STAT_STALL) ? 0x0U : 0x1U
+
+
+#define USBD_ENDPOINT_SET_TX_VALID(ep_num) do \
+{ \
+	uint16_t ep_val = *USBD_ENDPOINT_N_REG(ep_num); \
+	*USBD_ENDPOINT_N_REG(ep_num) = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_VALID, USBD_EP_STAT_TX_MASK); \
+}while(0)
+
+#define USBD_ENDPOINT_SET_RX_VALID(ep_num) do \
+{ \
+	uint16_t ep_val = *USBD_ENDPOINT_N_REG(ep_num); \
+	*USBD_ENDPOINT_N_REG(ep_num) = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, USBD_EP_STAT_RX_MASK); \
+}while(0)
+
+#define USBD_ENDPOINT_GET_KIND(ep_num) GET_BIT(*USBD_ENDPOINT_N_REG(ep_num), USBD_EP_KIND_MASK)
 
 /*Hardcoded endpoint 0 commands.*/
 
@@ -941,18 +884,6 @@ typedef struct
 { \
 	uint16_t ep_val = *USBD_ENDPOINT_0_REG; \
 	*USBD_ENDPOINT_0_REG = USBD_EP_SET_TOGGLE(ep_val, (USBD_EP_STAT_RX_STALL | USBD_EP_STAT_TX_STALL), (USBD_EP_STAT_RX_MASK | USBD_EP_STAT_TX_MASK)); \
-}while(0)
-
-#define USBD_ENDPOINT_0_SET_TX_VALID() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_0_REG; \
-	*USBD_ENDPOINT_0_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_VALID, USBD_EP_STAT_TX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_0_SET_RX_VALID() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_0_REG; \
-	*USBD_ENDPOINT_0_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, USBD_EP_STAT_RX_MASK); \
 }while(0)
 
 #define USBD_ENDPOINT_0_TRANSMIT_ZLP() do \
@@ -973,127 +904,6 @@ typedef struct
 	uint16_t ep_val = *USBD_ENDPOINT_0_REG; \
 	*USBD_ENDPOINT_0_REG = USBD_EP_CLEAR_RW(ep_val, USBD_EP_STATUS_OUT_MASK); \
 }while(0)
-
-
-
-/*Hardcoded endpoint 1 commands.*/
-
-#define USBD_ENDPOINT_1_GET_STALL() ((*USBD_ENDPOINT_1_REG & USBD_EP_STAT_RX_MASK) == USBD_EP_STAT_RX_STALL) ? 0x1U : 0x0U
-
-#define USBD_ENDPOINT_1_SET_STALL() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	if ((ep_val & USBD_EP_STAT_RX_MASK) != USBD_EP_STAT_RX_DISABLED) \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, USBD_EP_STAT_RX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_1_CLEAR_STALL() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	if ((ep_val & USBD_EP_STAT_RX_MASK) == USBD_EP_STAT_RX_STALL) \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, (USBD_EP_STAT_RX_MASK | USBD_EP_DTOG_RX_MASK | USBD_EP_SWBUF_RX_MASK)); \
-}while(0)
-
-#define USBD_ENDPOINT_1_GET_DOUBLE_BUFFER() _MACRO_GET_BIT((*USBD_ENDPOINT_1_REG), USBD_EP_KIND_POS)
-
-#define USBD_ENDPOINT_1_SET_DOUBLE_BUFFER() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_RW(ep_val, USBD_EP_DBL_BUF_MASK); \
-	ep_val = *USBD_ENDPOINT_1_REG; \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, USBD_EP_STAT_RX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_1_CLEAR_DOUBLE_BUFFER() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	*USBD_ENDPOINT_1_REG = USBD_EP_CLEAR_RW(ep_val, USBD_EP_DBL_BUF_MASK); \
-	ep_val = *USBD_ENDPOINT_1_REG; \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, (USBD_EP_STAT_RX_MASK | USBD_EP_SWBUF_TX_MASK)); \
-}while(0)
-
-#define USBD_ENDPOINT_1_SET_VALID() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_RX_VALID, USBD_EP_STAT_RX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_1_GET_DTOG_RX() _MACRO_GET_BIT((*USBD_ENDPOINT_1_REG), USBD_EP_DTOG_RX_POS)
-
-#define USBD_ENDPOINT_1_GET_SWBUF_RX() _MACRO_GET_BIT((*USBD_ENDPOINT_1_REG), USBD_EP_SWBUF_RX_POS)
-
-#define USBD_ENDPOINT_1_TOGGLE_SWBUF_RX() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_1_REG; \
-	*USBD_ENDPOINT_1_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_SWBUF_RX_POS, USBD_EP_SWBUF_RX_MASK); \
-}while(0)
-
-/*Hardcoded endpoint 2 commands.*/
-#define USBD_ENDPOINT_2_GET_STALL() ((*USBD_ENDPOINT_2_REG & USBD_EP_STAT_TX_MASK) == USBD_EP_STAT_TX_STALL) ? 0x1U : 0x0U
-
-#define USBD_ENDPOINT_2_SET_STALL() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	if ((ep_val & USBD_EP_STAT_TX_MASK) != USBD_EP_STAT_TX_DISABLED) \
-	*USBD_ENDPOINT_2_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_STALL, USBD_EP_STAT_TX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_2_CLEAR_STALL() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	if ((ep_val & USBD_EP_STAT_TX_MASK) == USBD_EP_STAT_TX_STALL) \
-	*USBD_ENDPOINT_2_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_NAK, (USBD_EP_STAT_TX_MASK | USBD_EP_DTOG_TX_MASK | USBD_EP_SWBUF_TX_MASK)); \
-}while(0)
-
-#define USBD_ENDPOINT_2_GET_DOUBLE_BUFFER() _MACRO_GET_BIT((*USBD_ENDPOINT_N_REG(USBD_ENDPOINT_2)), USBD_EP_KIND_POS)
-
-#define USBD_ENDPOINT_2_SET_DOUBLE_BUFFER() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	*USBD_ENDPOINT_2_REG = USBD_EP_SET_RW(ep_val, USBD_EP_DBL_BUF_MASK); \
-	ep_val = *USBD_ENDPOINT_2_REG; \
-	*USBD_ENDPOINT_2_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_DISABLED, USBD_EP_STAT_TX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_2_CLEAR_DOUBLE_BUFFER() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	*USBD_ENDPOINT_2_REG = USBD_EP_CLEAR_RW(ep_val, USBD_EP_DBL_BUF_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_2_SET_VALID() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	*USBD_ENDPOINT_2_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_STAT_TX_VALID, USBD_EP_STAT_TX_MASK); \
-}while(0)
-
-#define USBD_ENDPOINT_2_GET_DTOG_TX() _MACRO_GET_BIT((*USBD_ENDPOINT_2_REG), USBD_EP_DTOG_TX_POS)
-
-#define USBD_ENDPOINT_2_GET_SWBUF_TX() _MACRO_GET_BIT((*USBD_ENDPOINT_2_REG), USBD_EP_SWBUF_TX_POS)
-
-#define USBD_ENDPOINT_2_TOGGLE_SWBUF_TX() do \
-{ \
-	uint16_t ep_val = *USBD_ENDPOINT_2_REG; \
-	*USBD_ENDPOINT_2_REG = USBD_EP_SET_TOGGLE(ep_val, USBD_EP_SWBUF_TX_POS, USBD_EP_SWBUF_TX_MASK); \
-}while(0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #ifdef __cplusplus

@@ -11,6 +11,7 @@ typedef struct
 {
 	void (*usbd_endpoint_in)(void);
 	void (*usbd_endpoint_out)(void);
+	void (*resume_from_stall)(void);
 	void (*dap_init)(void);
 }usbd_callbacks;
 
